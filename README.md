@@ -11,6 +11,7 @@ This smart contract implements a digital version of traditional rotating savings
 - 🔒 **Trustless Automation**: Smart contracts handle all fund management
 - 🔄 **Rotating Payouts**: Automated payout scheduling based on member positions
 - ⚡ **Penalty System**: Built-in enforcement for defaulting members
+- 🔄 **Position Transfer**: Members can transfer their position to another person
 - 👥 **Flexible Pool Size**: Support for 2-20 members per pool
 - 💎 **Transparent**: All transactions and balances are publicly verifiable
 
@@ -43,6 +44,12 @@ This smart contract implements a digital version of traditional rotating savings
 (contract-call? .Peer-to-Peer-Micro-Savings-Pool claim-payout u1)
 ```
 
+### Transferring Your Position
+
+```clarity
+(contract-call? .Peer-to-Peer-Micro-Savings-Pool transfer-position u1 'SP1234ABCD...)
+```
+
 ## 📋 Core Functions
 
 ### 🏗️ Pool Management
@@ -51,6 +58,7 @@ This smart contract implements a digital version of traditional rotating savings
 |----------|-------------|------------|
 | `create-pool` | Create a new savings pool | `contribution-amount` `max-members` `payout-schedule` |
 | `join-pool` | Join an existing pool | `pool-id` |
+| `transfer-position` | Transfer your position to another member | `pool-id` `recipient` |
 | `advance-cycle` | Move to next payout cycle (creator only) | `pool-id` |
 
 ### 💳 Financial Operations
@@ -125,6 +133,8 @@ Cycle 5: Member 5 → Claims (5 × contribution)
 | u110 | Payout not ready |
 | u111 | Already contributed |
 | u112 | Not your turn |
+| u113 | Cannot transfer to self |
+| u114 | Recipient already member |
 
 ## 🧪 Testing
 

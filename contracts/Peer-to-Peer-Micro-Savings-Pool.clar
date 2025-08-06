@@ -12,6 +12,8 @@
 (define-constant err-payout-not-ready (err u110))
 (define-constant err-already-contributed (err u111))
 (define-constant err-not-your-turn (err u112))
+(define-constant err-transfer-to-self (err u113))
+(define-constant err-recipient-already-member (err u114))
 
 (define-data-var pool-counter uint u0)
 
@@ -269,6 +271,28 @@
       )
       (ok true)
     )
+  )
+)
+
+(define-public (transfer-position (pool-id uint) (recipient principal))
+  (let
+    (
+      (pool-data (unwrap! (get-pool pool-id) err-not-found))
+      (member-data (unwrap! (get-member-info pool-id tx-sender) err-not-member))
+      (recipient-exists (is-some (get-member-info pool-id recipient)))
+    )
+    (asserts! (not (is-eq tx-sender recipient)) err-transfer-to-self)
+    (asserts! (not recipient-exists) err-recipient-already-member)
+    (asserts! (not (get has-received-payout member-data)) err-already-contributed)
+    
+    (map-delete pool-members { pool-id: pool-id, member: tx-sender })
+    
+    (map-set pool-members
+      { pool-id: pool-id, member: recipient }
+      (merge member-data { joined-at: stacks-block-height })
+    )
+    
+    (ok true)
   )
 )
 
