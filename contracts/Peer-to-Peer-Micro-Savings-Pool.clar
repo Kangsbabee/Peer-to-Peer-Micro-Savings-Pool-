@@ -15,6 +15,8 @@
 (define-constant err-transfer-to-self (err u113))
 (define-constant err-recipient-already-member (err u114))
 
+(define-constant penalty-rate u10)
+
 (define-data-var pool-counter uint u0)
 
 (define-map pools
@@ -325,5 +327,36 @@
       is-active: (get is-active pool-data)
     })
     err-not-found
+  )
+)
+
+(define-public (emergency-withdraw (pool-id uint))
+  (let
+    (
+      (pool-data (unwrap! (get-pool pool-id) err-not-found))
+      (member-data (unwrap! (get-member-info pool-id tx-sender) err-not-member))
+      (total-contributed (get total-contributed member-data))
+      (penalty (/ (* total-contributed penalty-rate) u100))
+      (withdrawable-amount (- total-contributed penalty))
+    )
+    (asserts! (get is-active pool-data) err-pool-inactive)
+    (asserts! (not (get has-received-payout member-data)) err-already-contributed)
+    (asserts! (>= (get pool-balance pool-data) withdrawable-amount) err-insufficient-funds)
+    (try! (as-contract (stx-transfer? withdrawable-amount tx-sender tx-sender)))
+    (map-set pool-members
+      { pool-id: pool-id, member: tx-sender }
+      (merge member-data {
+        total-contributed: u0,
+        has-received-payout: true,
+        penalty-count: (+ (get penalty-count member-data) u1)
+      })
+    )
+    (map-set pools
+      { pool-id: pool-id }
+      (merge pool-data {
+        pool-balance: (- (get pool-balance pool-data) withdrawable-amount)
+      })
+    )
+    (ok withdrawable-amount)
   )
 )
