@@ -64,6 +64,11 @@
   }
 )
 
+(define-map cycle-contributions
+  { pool-id: uint, cycle: uint }
+  { count: uint }
+)
+
 (define-read-only (get-pool (pool-id uint))
   (map-get? pools { pool-id: pool-id })
 )
@@ -104,7 +109,9 @@
         created-at: stacks-block-height
       }
     )
-    
+
+    (map-set cycle-contributions { pool-id: new-pool-id, cycle: u1 } { count: u0 })
+
     (var-set pool-counter new-pool-id)
     (ok new-pool-id)
   )
@@ -192,7 +199,28 @@
         pool-balance: (+ (get pool-balance pool-data) (get contribution-amount pool-data))
       })
     )
-    
+
+    (let
+      (
+        (current-count (default-to u0 (get count (map-get? cycle-contributions { pool-id: pool-id, cycle: current-cycle }))))
+        (new-count (+ current-count u1))
+      )
+      (map-set cycle-contributions { pool-id: pool-id, cycle: current-cycle } { count: new-count })
+      (if (is-eq new-count (get max-members pool-data))
+        (let
+          (
+            (next-cycle (+ current-cycle u1))
+          )
+          (map-set pools { pool-id: pool-id } (merge pool-data { current-cycle: next-cycle }))
+          (if (> next-cycle (get total-cycles pool-data))
+            (map-set pools { pool-id: pool-id } (merge pool-data { current-cycle: next-cycle, is-active: false }))
+            (map-set cycle-contributions { pool-id: pool-id, cycle: next-cycle } { count: u0 })
+          )
+        )
+        true
+      )
+    )
+
     (ok true)
   )
 )
@@ -259,7 +287,9 @@
         current-cycle: (+ current-cycle u1)
       })
     )
-    
+
+    (map-set cycle-contributions { pool-id: pool-id, cycle: (+ current-cycle u1) } { count: u0 })
+
     (if (is-eq (+ current-cycle u1) (+ (get total-cycles pool-data) u1))
       (begin
         (map-set pools
