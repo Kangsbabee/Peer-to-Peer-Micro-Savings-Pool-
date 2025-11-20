@@ -305,6 +305,23 @@
     )
   )
 )
+(define-public (extend-pool-cycles (pool-id uint) (additional-cycles uint))
+  (let
+    (
+      (pool-data (unwrap! (get-pool pool-id) err-not-found))
+    )
+    (asserts! (is-eq tx-sender (get creator pool-data)) err-owner-only)
+    (asserts! (get is-active pool-data) err-pool-inactive)
+    (asserts! (> additional-cycles u0) err-invalid-amount)
+    (map-set pools
+      { pool-id: pool-id }
+      (merge pool-data {
+        total-cycles: (+ (get total-cycles pool-data) additional-cycles)
+      })
+    )
+    (ok true)
+  )
+)
 
 (define-public (transfer-position (pool-id uint) (recipient principal))
   (let
